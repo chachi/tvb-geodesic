@@ -235,11 +235,11 @@ inline void Mesh::build_adjacencies()
     }
 
     //Edges->adjacent Vertices and Faces
-    m_edges.resize(number_of_edges);
+    m_edges.reserve(number_of_edges);
     unsigned edge_id = 0;
     for(unsigned i=0; i<half_edges.size();)
     {
-        Edge& e = m_edges[edge_id];
+        Edge e;
         e.id() = edge_id++;
 
         e.adjacent_vertices().set_allocation(allocate_pointers(2),2);    //allocate two units of memory
@@ -263,6 +263,7 @@ inline void Mesh::build_adjacencies()
             e.adjacent_faces()[0] = &m_faces[half_edges[i].face_id];
             i += 1;
         }
+        m_edges.push_back(e);
     }
 
     //Vertices->adjacent Edges

@@ -188,7 +188,7 @@ def compute_gdist(numpy.ndarray[numpy.float64_t, ndim=2] vertices,
         algorithm.best_source(stop_points[k], distances[k])
     
     distances[distances==GEODESIC_INF] = numpy.inf
-
+    del algorithm
     return distances
 
 
@@ -280,5 +280,5 @@ def local_gdist_matrix(numpy.ndarray[numpy.float64_t, ndim=2] vertices,
                 rows.append(k)
                 columns.append(kk)
                 data.append(distance)
-    
+    del algorithm
     return scipy.sparse.csc_matrix((data, (rows, columns)), shape=(N, N))

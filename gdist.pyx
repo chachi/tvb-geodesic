@@ -64,9 +64,14 @@ cdef extern from "geodesic_mesh_elements.h" namespace "geodesic":
         Vertex()
 
 cdef extern from "geodesic_mesh_elements.h" namespace "geodesic":
+    cdef cppclass Face:
+        Face()
+
+cdef extern from "geodesic_mesh_elements.h" namespace "geodesic":
     cdef cppclass SurfacePoint:
         SurfacePoint()
         SurfacePoint(Vertex*)
+        SurfacePoint(Face*)
         double& x()
         double& y()
         double& z()
@@ -76,6 +81,7 @@ cdef extern from "geodesic_mesh.h" namespace "geodesic":
         Mesh()
         void initialize_mesh_data(vector[double]&, vector[unsigned]&)
         vector[Vertex]& vertices()
+        vector[Face]& faces()
 
 cdef extern from "geodesic_algorithm_exact.h" namespace "geodesic":
     cdef cppclass GeodesicAlgorithmExact:

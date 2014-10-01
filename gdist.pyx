@@ -288,3 +288,90 @@ def local_gdist_matrix(numpy.ndarray[numpy.float64_t, ndim=2] vertices,
                 data.append(distance)
     del algorithm
     return scipy.sparse.csc_matrix((data, (rows, columns)), shape=(N, N))
+
+def faces_target_gdist_matrix(numpy.ndarray[numpy.float64_t, ndim=2] vertices,
+                              numpy.ndarray[numpy.int32_t, ndim=2] triangles,
+                              all_targets,
+                              double max_distance = GEODESIC_INF):
+    """
+    This is the wrapper function for computing geodesic distance from every 
+    vertex on the surface to all desired target vertices.
+
+    The function accepts four arguments:
+        ``vertices``: defines x,y,z coordinates of the mesh's vertices
+        ``triangles``: defines faces of the mesh as index triplets into vertices.
+        ``all_targets``: defines target faces for each source face.
+        ``max_distance``: Maximum distance to go before stopping
+                          search for target.
+    and returns a scipy.sparse.csc_matrix((N, N), dtype=numpy.float64), where N
+    is the number of vertices, specifying the shortest distance from all 
+    vertices to all the target vertices within max_distance.
+    
+    Basic usage then looks like::
+        >>> import numpy
+        >>> temp = numpy.loadtxt("flat_triangular_mesh.txt", skiprows=1)
+        >>> import gdist
+        >>> vertices = temp[0:121].astype(numpy.float64)
+        >>> triangles = temp[121:321].astype(numpy.int32)
+        >>> all_targets = [None] * triangles.shape[0]
+        >>> all_targets[0] = [1, 2, 3, 4]
+        >>> gdist.faces_target_gdist_matrix(vertices, triangles,
+                                            all_targets, max_distance=1.0)
+         <121x121 sparse matrix of type '<type 'numpy.float64'>'
+             with 4 stored elements in Compressed Sparse Column format>
+    """
+    
+    # Define C++ vectors to contain the mesh surface components.
+    cdef vector[double] points
+    cdef vector[unsigned] faces
+    
+    # Map numpy array of mesh "vertices" to C++ vector of mesh "points" 
+    cdef numpy.float64_t coord
+    for coord in vertices.flatten():
+        points.push_back(coord)
+        
+    # Map numpy array of mesh "triangles" to C++ vector of mesh "faces" 
+    cdef numpy.int32_t indx
+    for indx in triangles.flatten():
+        faces.push_back(indx)
+
+    # Create a mesh object
+    cdef Mesh amesh
+    amesh.initialize_mesh_data(points, faces)
+    
+    # Define and create object for exact algorithm on that mesh:
+    cdef GeodesicAlgorithmExact* algorithm = new GeodesicAlgorithmExact(&amesh)
+    
+    cdef vector[SurfacePoint] source, targets
+    cdef Py_ssize_t N = triangles.shape[0]
+    cdef Py_ssize_t k
+    cdef Py_ssize_t kk
+    cdef numpy.float64_t distance = 0
+    
+    #
+    rows = []
+    columns = []
+    data = []
+    source.resize(1);
+    for k in range(N):
+        targets.clear()
+
+        source[0] = SurfacePoint(&amesh.faces()[k]);
+
+        target_indices = all_targets[k]
+        if not target_indices:
+            continue
+
+        for t in target_indices:
+            targets.push_back(SurfacePoint(&amesh.faces()[t]))
+        algorithm.propagate(source, max_distance, &targets)
+
+        for t in xrange(len(target_indices)):
+            algorithm.best_source(targets[t], distance)
+
+            if (distance != GEODESIC_INF) and (distance != 0):
+                rows.append(k)
+                columns.append(target_indices[t])
+                data.append(distance)
+    del algorithm
+    return scipy.sparse.csc_matrix((data, (rows, columns)), shape=(N, N))

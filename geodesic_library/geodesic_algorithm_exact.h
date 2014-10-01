@@ -681,11 +681,12 @@ inline void GeodesicAlgorithmExact::propagate(std::vector<SurfacePoint>& sources
 inline bool GeodesicAlgorithmExact::check_stop_conditions(unsigned& index)
 {
     double queue_distance = m_queue.empty() ? GEODESIC_INF : (*m_queue.begin())->min();
-    if(queue_distance < stop_distance())
+    if(m_stop_vertices.empty() && queue_distance < stop_distance())
     {
         return false;
     }
 
+    bool all_found = true;
     while(index < m_stop_vertices.size())
     {
         vertex_pointer v = m_stop_vertices[index].first;
@@ -697,14 +698,19 @@ inline bool GeodesicAlgorithmExact::check_stop_conditions(unsigned& index)
 
         if(queue_distance < distance + m_stop_vertices[index].second)
         {
-            return false;
+            all_found = false;
+            break;
         }
 
         ++index;
     }
+    if (all_found) {
+        return true;
+    } else if (queue_distance < stop_distance()) {
+        return false;
+    }
     return true;
 }
-
 
 inline void GeodesicAlgorithmExact::update_list_and_queue(list_pointer list,
                                                           IntervalWithStop* candidates,    //up to two candidates
